@@ -42,6 +42,12 @@ pub enum RendererToBrowser {
         root_height: f32,
         first_boxes: Vec<LayoutBox>,
     },
+    PaintRendered {
+        request_id: u64,
+        width: u32,
+        height: u32,
+        pixels: Vec<u8>,
+    },
     Crashed { reason: String },
 }
 

@@ -4,6 +4,7 @@ use html5ever::tendril::TendrilSink;
 use ipc::{read_message, write_message, BrowserToRenderer, RendererToBrowser};
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
 use std::io::{stdin, stdout};
+use tiny_skia::{Color, Paint, Pixmap, Rect, Transform};
 
 fn parse_html(bytes: &[u8]) -> RcDom {
     let html = String::from_utf8_lossy(bytes).to_string();
@@ -204,7 +205,21 @@ fn main() {
                         box_count,
                         root_width,
                         root_height,
-                        first_boxes,
+                        first_boxes: first_boxes.clone(),
+                    },
+                );
+
+                // H6: pintar
+                let paint_width = root_width as u32;
+                let paint_height = (root_height as u32).min(2000);
+                let pixels = paint_boxes(&first_boxes, paint_width, paint_height);
+                let _ = write_message(
+                    &mut output,
+                    &RendererToBrowser::PaintRendered {
+                        request_id,
+                        width: paint_width,
+                        height: paint_height,
+                        pixels,
                     },
                 );
             }
@@ -280,6 +295,24 @@ fn layout_node(
     }
 
     total_height
+}
+
+fn paint_boxes(boxes: &[ipc::LayoutBox], width: u32, height: u32) -> Vec<u8> {
+    let mut pixmap = Pixmap::new(width, height).unwrap();
+    pixmap.fill(Color::WHITE);
+
+    let mut paint = Paint::default();
+    paint.set_color_rgba8(80, 140, 220, 255); // azul
+    paint.anti_alias = false;
+
+    for b in boxes {
+        let rect = Rect::from_xywh(b.x, b.y, b.width.max(1.0), b.height.max(1.0));
+        if let Some(rect) = rect {
+            pixmap.fill_rect(rect, &paint, Transform::identity(), None);
+        }
+    }
+
+    pixmap.data().to_vec()
 }
 
 fn compute_layout(dom: &RcDom) -> (usize, f32, f32, Vec<ipc::LayoutBox>) {

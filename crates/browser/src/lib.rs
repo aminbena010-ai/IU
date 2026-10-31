@@ -1,8 +1,3 @@
-use http_body_util::BodyExt;
-use hyper::Uri;
-use hyper_tls::HttpsConnector;
-use hyper_util::client::legacy::Client;
-use hyper_util::rt::TokioExecutor;
 use ipc::{read_message, write_message, BrowserToRenderer, RendererToBrowser};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -28,14 +23,23 @@ fn renderer_path() -> PathBuf {
 }
 
 async fn fetch_url(url: &str) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
-    let uri: Uri = url.parse()?;
-    let https = HttpsConnector::new();
-    let client: Client<_, http_body_util::Full<bytes::Bytes>> =
-        Client::builder(TokioExecutor::new()).build(https);
-
-    let res = client.get(uri).await?;
-    let body = res.into_body().collect().await?.to_bytes();
+    let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36")
+        .build()?;
+    let res = client.get(url).send().await?;
+    let body = res.bytes().await?;
     Ok(body.to_vec())
+}
+
+fn save_png(path: &str, width: u32, height: u32, rgba: &[u8]) -> Result<(), Box<dyn std::error::Error>> {
+    let file = std::fs::File::create(path)?;
+    let w = std::io::BufWriter::new(file);
+    let mut encoder = png::Encoder::new(w, width, height);
+    encoder.set_color(png::ColorType::Rgba);
+    encoder.set_depth(png::BitDepth::Eight);
+    let mut writer = encoder.write_header()?;
+    writer.write_image_data(rgba)?;
+    Ok(())
 }
 
 pub fn start(url: Option<String>) {
@@ -70,7 +74,8 @@ pub fn start(url: Option<String>) {
                     },
                 )
                 .unwrap();
-                // Primer mensaje: DomParsed
+
+                // 1. DomParsed
                 let dom_msg: RendererToBrowser = read_message(&mut from_renderer).unwrap();
                 if let RendererToBrowser::DomParsed {
                     node_count,
@@ -85,7 +90,7 @@ pub fn start(url: Option<String>) {
                     println!("  primeros elementos: {:?}", first_elements);
                 }
 
-                // Segundo mensaje: StylesComputed
+                // 2. StylesComputed
                 let styles_msg: RendererToBrowser = read_message(&mut from_renderer).unwrap();
                 if let RendererToBrowser::StylesComputed {
                     rule_count,
@@ -100,7 +105,7 @@ pub fn start(url: Option<String>) {
                     println!("  ejemplos: {:?}", examples);
                 }
 
-                // Tercer mensaje: LayoutComputed
+                // 3. LayoutComputed
                 let layout_msg: RendererToBrowser = read_message(&mut from_renderer).unwrap();
                 if let RendererToBrowser::LayoutComputed {
                     box_count,
@@ -119,6 +124,27 @@ pub fn start(url: Option<String>) {
                             "    <{}> x={:.1} y={:.1} w={:.1} h={:.1}",
                             b.tag, b.x, b.y, b.width, b.height
                         );
+                    }
+                }
+
+                // 4. PaintRendered
+                let paint_msg: RendererToBrowser = read_message(&mut from_renderer).unwrap();
+                if let RendererToBrowser::PaintRendered {
+                    width,
+                    height,
+                    pixels,
+                    ..
+                } = paint_msg
+                {
+                    println!(
+                        "[browser] paint recibido: {} x {} ({} bytes)",
+                        width,
+                        height,
+                        pixels.len()
+                    );
+                    match save_png("iu_render.png", width, height, &pixels) {
+                        Ok(()) => println!("[browser] PNG guardado en iu_render.png"),
+                        Err(e) => eprintln!("[browser] error guardando PNG: {}", e),
                     }
                 }
             }
