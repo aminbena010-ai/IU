@@ -194,9 +194,98 @@ fn main() {
                         examples,
                     },
                 );
+
+                // H5: layout
+                let (box_count, root_width, root_height, first_boxes) = compute_layout(&dom);
+                let _ = write_message(
+                    &mut output,
+                    &RendererToBrowser::LayoutComputed {
+                        request_id,
+                        box_count,
+                        root_width,
+                        root_height,
+                        first_boxes,
+                    },
+                );
             }
             BrowserToRenderer::Shutdown => break,
             BrowserToRenderer::LoadUrl { .. } => {}
         }
     }
+}
+
+// ===== H5: Layout básico =====
+// Recorre el DOM y genera una caja por cada elemento visible.
+fn layout_node(
+    node: &Handle,
+    x: f32,
+    y: f32,
+    width: f32,
+    boxes: &mut Vec<ipc::LayoutBox>,
+    depth: usize,
+) -> f32 {
+    if depth > 50 {
+        return 0.0;
+    }
+
+    let padding = 4.0;
+    let line_height = 16.0;
+    let mut total_height = 0.0f32;
+
+    match &node.data {
+        NodeData::Element { name, .. } => {
+            let tag = name.local.to_string();
+
+            // Calcular altura de los hijos primero
+            let inner_x = x + padding;
+            let inner_y = y + padding;
+            let inner_width = (width - padding * 2.0).max(0.0);
+            let mut children_height = 0.0f32;
+
+            for child in node.children.borrow().iter() {
+                let h = layout_node(child, inner_x, inner_y + children_height, inner_width, boxes, depth + 1);
+                children_height += h;
+            }
+
+            let height = if children_height > 0.0 {
+                children_height + padding * 2.0
+            } else {
+                line_height
+            };
+
+            boxes.push(ipc::LayoutBox {
+                tag,
+                x,
+                y,
+                width,
+                height,
+            });
+
+            total_height = height;
+        }
+        NodeData::Text { contents } => {
+            if !contents.borrow().trim().is_empty() {
+                total_height = line_height;
+            }
+        }
+        _ => {
+            // Document, Comment, Doctype: recorrer hijos sin crear caja
+            let mut child_y = y;
+            for child in node.children.borrow().iter() {
+                let h = layout_node(child, x, child_y, width, boxes, depth + 1);
+                child_y += h;
+                total_height += h;
+            }
+        }
+    }
+
+    total_height
+}
+
+fn compute_layout(dom: &RcDom) -> (usize, f32, f32, Vec<ipc::LayoutBox>) {
+    let viewport_width = 1024.0f32;
+    let mut boxes = Vec::new();
+    let height = layout_node(&dom.document, 0.0, 0.0, viewport_width, &mut boxes, 0);
+    let first_boxes: Vec<ipc::LayoutBox> = boxes.iter().take(10).cloned().collect();
+    (boxes.len(), viewport_width, height, first_boxes)
 }

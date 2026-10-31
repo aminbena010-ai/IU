@@ -99,6 +99,28 @@ pub fn start(url: Option<String>) {
                     println!("  elementos con style inline: {}", styled_element_count);
                     println!("  ejemplos: {:?}", examples);
                 }
+
+                // Tercer mensaje: LayoutComputed
+                let layout_msg: RendererToBrowser = read_message(&mut from_renderer).unwrap();
+                if let RendererToBrowser::LayoutComputed {
+                    box_count,
+                    root_width,
+                    root_height,
+                    first_boxes,
+                    ..
+                } = layout_msg
+                {
+                    println!("[browser] layout computado:");
+                    println!("  cajas: {}", box_count);
+                    println!("  viewport: {} x {}", root_width, root_height);
+                    println!("  primeras cajas:");
+                    for b in first_boxes.iter().take(5) {
+                        println!(
+                            "    <{}> x={:.1} y={:.1} w={:.1} h={:.1}",
+                            b.tag, b.x, b.y, b.width, b.height
+                        );
+                    }
+                }
             }
             Err(e) => {
                 eprintln!("[browser] error al cargar: {}", e);

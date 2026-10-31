@@ -9,6 +9,15 @@ pub enum BrowserToRenderer {
     Shutdown,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct LayoutBox {
+    pub tag: String,
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum RendererToBrowser {
     Pong { id: u64 },
@@ -25,6 +34,13 @@ pub enum RendererToBrowser {
         rule_count: usize,
         styled_element_count: usize,
         examples: Vec<String>,
+    },
+    LayoutComputed {
+        request_id: u64,
+        box_count: usize,
+        root_width: f32,
+        root_height: f32,
+        first_boxes: Vec<LayoutBox>,
     },
     Crashed { reason: String },
 }
