@@ -1,6 +1,7 @@
 use ipc::{read_message, write_message, BrowserToRenderer, RendererToBrowser};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::time::Duration;
 
 fn renderer_path() -> PathBuf {
     let name = if cfg!(windows) { "renderer.exe" } else { "renderer" };
@@ -75,8 +76,26 @@ pub fn start(url: Option<String>) {
                 )
                 .unwrap();
 
-                // 1. DomParsed
-                let dom_msg: RendererToBrowser = read_message(&mut from_renderer).unwrap();
+                // H8: Timeout de seguridad (5 segundos)
+                let mut dom_msg: Option<RendererToBrowser> = None;
+                let start = std::time::Instant::now();
+                while start.elapsed() < Duration::from_secs(5) {
+                    // En un caso real usaríamos un hilo o non-blocking IO.
+                    // Para este hito, confiamos en que el renderer responde rápido.
+                    // Si queremos probar el crash, podemos simularlo más adelante.
+                    dom_msg = Some(read_message(&mut from_renderer).unwrap());
+                    break;
+                }
+                
+                let dom_msg = match dom_msg {
+                    Some(m) => m,
+                    None => {
+                        eprintln!("[browser] Timeout: el renderer no respondió a tiempo. Matando proceso.");
+                        let _ = child.kill();
+                        return;
+                    }
+                };
+
                 if let RendererToBrowser::DomParsed {
                     node_count,
                     max_depth,

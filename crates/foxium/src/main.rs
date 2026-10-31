@@ -1,5 +1,7 @@
 use eframe::egui;
 use std::path::PathBuf;
+use std::sync::mpsc::{channel, Receiver};
+use std::thread;
 
 struct FoxiumApp {
     url: String,
@@ -7,6 +9,7 @@ struct FoxiumApp {
     image_path: PathBuf,
     texture: Option<egui::TextureHandle>,
     loading: bool,
+    rx: Option<Receiver<()>>,
 }
 
 impl Default for FoxiumApp {
@@ -17,6 +20,7 @@ impl Default for FoxiumApp {
             image_path: PathBuf::from("iu_render.png"),
             texture: None,
             loading: false,
+            rx: None,
         }
     }
 }
@@ -46,30 +50,54 @@ impl FoxiumApp {
         }
     }
 
-    fn navigate(&mut self, ctx: &egui::Context) {
+    fn navigate(&mut self) {
         self.loading = true;
         self.status = format!("Cargando {} ...", self.url);
+        
         let url = self.url.clone();
-        browser::start(Some(url));
-        self.load_image(ctx);
-        self.loading = false;
+        let (tx, rx) = channel();
+        self.rx = Some(rx);
+
+        // Ejecutamos el motor en un hilo separado para no congelar la UI
+        thread::spawn(move || {
+            browser::start(Some(url));
+            let _ = tx.send(());
+        });
+    }
+
+    fn check_thread(&mut self, ctx: &egui::Context) {
+        if let Some(rx) = &self.rx {
+            if let Ok(_) = rx.try_recv() {
+                self.load_image(ctx);
+                self.loading = false;
+                self.rx = None;
+            } else {
+                // Mantener la UI viva mientras carga
+                ctx.request_repaint();
+            }
+        }
     }
 }
 
 impl eframe::App for FoxiumApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.check_thread(ctx);
+
         egui::TopBottomPanel::top("barra").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label("Foxium");
                 ui.separator();
                 ui.label("URL:");
-                ui.add(
-                    egui::TextEdit::singleline(&mut self.url)
-                        .desired_width(f32::INFINITY)
-                        .hint_text("https://..."),
+                
+                // Forzamos un ancho máximo para que el botón no se salga
+                ui.add_sized(
+                    [ui.available_width() - 80.0, 24.0],
+                    egui::TextEdit::singleline(&mut self.url).hint_text("https://..."),
                 );
-                if ui.button("Ir").clicked() && !self.loading {
-                    self.navigate(ctx);
+                
+                // Botón "Ir" fijo
+                if ui.add_enabled(!self.loading, egui::Button::new("Ir")).clicked() {
+                    self.navigate();
                 }
             });
         });
