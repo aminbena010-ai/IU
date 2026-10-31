@@ -72,15 +72,16 @@ pub fn start(url: Option<String>) {
                 .unwrap();
                 let confirm: RendererToBrowser = read_message(&mut from_renderer).unwrap();
                 match confirm {
-                    RendererToBrowser::HtmlLoaded { body, .. } => {
-                        let preview_len = body.len().min(500);
-                        let preview = String::from_utf8_lossy(&body[..preview_len]);
-                        println!(
-                            "[browser] HTML recibido ({} bytes). Primeros {} bytes:\n{}",
-                            body.len(),
-                            preview_len,
-                            preview
-                        );
+                    RendererToBrowser::DomParsed {
+                        node_count,
+                        max_depth,
+                        first_elements,
+                        ..
+                    } => {
+                        println!("[browser] DOM parseado:");
+                        println!("  nodos: {}", node_count);
+                        println!("  profundidad máxima: {}", max_depth);
+                        println!("  primeros elementos: {:?}", first_elements);
                     }
                     other => println!("[browser] renderer confirma: {:?}", other),
                 }

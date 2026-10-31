@@ -14,6 +14,12 @@ pub enum RendererToBrowser {
     Pong { id: u64 },
     RequestResource { request_id: u64, url: String },
     HtmlLoaded { request_id: u64, body: Vec<u8> },
+    DomParsed {
+        request_id: u64,
+        node_count: usize,
+        max_depth: usize,
+        first_elements: Vec<String>,
+    },
     Crashed { reason: String },
 }
 

@@ -6,6 +6,8 @@ license = "Apache-2.0"
 
 [dependencies]
 ipc = { path = "../ipc" }
+html5ever = "0.27"
+markup5ever_rcdom = "0.3"
 
 [[bin]]
 name = "renderer"
