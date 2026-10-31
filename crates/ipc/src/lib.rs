@@ -20,6 +20,12 @@ pub enum RendererToBrowser {
         max_depth: usize,
         first_elements: Vec<String>,
     },
+    StylesComputed {
+        request_id: u64,
+        rule_count: usize,
+        styled_element_count: usize,
+        examples: Vec<String>,
+    },
     Crashed { reason: String },
 }
 

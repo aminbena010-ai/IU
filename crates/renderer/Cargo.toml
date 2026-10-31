@@ -8,6 +8,8 @@ license = "Apache-2.0"
 ipc = { path = "../ipc" }
 html5ever = "0.27"
 markup5ever_rcdom = "0.3"
+cssparser = "0.34"
+selectors = "0.26"
 
 [[bin]]
 name = "renderer"

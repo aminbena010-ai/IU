@@ -70,20 +70,34 @@ pub fn start(url: Option<String>) {
                     },
                 )
                 .unwrap();
-                let confirm: RendererToBrowser = read_message(&mut from_renderer).unwrap();
-                match confirm {
-                    RendererToBrowser::DomParsed {
-                        node_count,
-                        max_depth,
-                        first_elements,
-                        ..
-                    } => {
-                        println!("[browser] DOM parseado:");
-                        println!("  nodos: {}", node_count);
-                        println!("  profundidad máxima: {}", max_depth);
-                        println!("  primeros elementos: {:?}", first_elements);
-                    }
-                    other => println!("[browser] renderer confirma: {:?}", other),
+                // Primer mensaje: DomParsed
+                let dom_msg: RendererToBrowser = read_message(&mut from_renderer).unwrap();
+                if let RendererToBrowser::DomParsed {
+                    node_count,
+                    max_depth,
+                    first_elements,
+                    ..
+                } = dom_msg
+                {
+                    println!("[browser] DOM parseado:");
+                    println!("  nodos: {}", node_count);
+                    println!("  profundidad máxima: {}", max_depth);
+                    println!("  primeros elementos: {:?}", first_elements);
+                }
+
+                // Segundo mensaje: StylesComputed
+                let styles_msg: RendererToBrowser = read_message(&mut from_renderer).unwrap();
+                if let RendererToBrowser::StylesComputed {
+                    rule_count,
+                    styled_element_count,
+                    examples,
+                    ..
+                } = styles_msg
+                {
+                    println!("[browser] estilos computados:");
+                    println!("  reglas CSS: {}", rule_count);
+                    println!("  elementos con style inline: {}", styled_element_count);
+                    println!("  ejemplos: {:?}", examples);
                 }
             }
             Err(e) => {
