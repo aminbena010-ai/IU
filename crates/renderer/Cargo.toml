@@ -6,3 +6,7 @@ license = "Apache-2.0"
 
 [dependencies]
 ipc = { path = "../ipc" }
+
+[[bin]]
+name = "renderer"
+path = "src/bin/renderer.rs"

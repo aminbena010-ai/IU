@@ -1,9 +1,12 @@
 [package]
-name = "iu-demo"
+name = "demo"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
 browser = { path = "../browser" }
-renderer = { path = "../renderer" }
+
+[[bin]]
+name = "demo"
+path = "src/bin/demo.rs"
