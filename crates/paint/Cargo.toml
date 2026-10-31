@@ -1,0 +1,9 @@
+[package]
+name = "çpaint"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Comandos de dibujo y rasterizado del motor IU"
+
+[dependencies]
+tiny-skia = "0.11"
