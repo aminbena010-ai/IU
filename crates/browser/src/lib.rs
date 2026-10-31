@@ -125,7 +125,7 @@ pub fn start(url: Option<String>) {
                 }
 
                 // 3. LayoutComputed
-                let layout_msg: RendererToBrowser = read_message(&mut from_renderer).unwrap();
+                let layout_msg: RendererToBrowser = match read_message(&mut from_renderer) { Ok(m) => m, Err(e) => { eprintln!("[browser] el renderer murió antes de enviar el layout: {}", e); let _ = child.kill(); return; } };
                 if let RendererToBrowser::LayoutComputed {
                     box_count,
                     root_width,

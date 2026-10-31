@@ -16,6 +16,7 @@ pub struct LayoutBox {
     pub y: f32,
     pub width: f32,
     pub height: f32,
+    pub text: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -48,6 +49,7 @@ pub enum RendererToBrowser {
         height: u32,
         pixels: Vec<u8>,
     },
+    JsExecuted { script_count: usize, success_count: usize },
     Crashed { reason: String },
 }
 
