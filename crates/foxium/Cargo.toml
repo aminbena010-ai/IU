@@ -1,0 +1,15 @@
+[package]
+name = "foxium"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+
+[dependencies]
+browser = { path = "../browser" }
+eframe = "0.29"
+egui_extras = { version = "0.29", features = ["image"] }
+image = "0.25"
+
+[[bin]]
+name = "foxium"
+path = "src/main.rs"
