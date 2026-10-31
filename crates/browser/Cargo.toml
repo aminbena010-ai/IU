@@ -6,3 +6,10 @@ license = "Apache-2.0"
 
 [dependencies]
 ipc = { path = "../ipc" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+hyper = { version = "1", features = ["client", "http1"] }
+hyper-tls = "0.6"
+hyper-util = { version = "0.1", features = ["client-legacy", "tokio", "http1"] }
+http-body-util = "0.1"
+bytes = "1"
+native-tls = "0.2"

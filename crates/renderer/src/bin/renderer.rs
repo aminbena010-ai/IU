@@ -15,6 +15,13 @@ fn main() {
             BrowserToRenderer::Ping { id } => {
                 let _ = write_message(&mut output, &RendererToBrowser::Pong { id });
             }
+            BrowserToRenderer::LoadHtml { request_id, body } => {
+                // NO imprimir a stdout: es el canal IPC. Solo enviar el mensaje.
+                let _ = write_message(
+                    &mut output,
+                    &RendererToBrowser::HtmlLoaded { request_id, body },
+                );
+            }
             BrowserToRenderer::Shutdown => break,
             BrowserToRenderer::LoadUrl { .. } => {}
         }

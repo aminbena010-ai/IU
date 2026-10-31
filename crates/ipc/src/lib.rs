@@ -5,6 +5,7 @@ use std::io::{self, Read, Write};
 pub enum BrowserToRenderer {
     Ping { id: u64 },
     LoadUrl { url: String, request_id: u64 },
+    LoadHtml { request_id: u64, body: Vec<u8> },
     Shutdown,
 }
 
@@ -12,6 +13,7 @@ pub enum BrowserToRenderer {
 pub enum RendererToBrowser {
     Pong { id: u64 },
     RequestResource { request_id: u64, url: String },
+    HtmlLoaded { request_id: u64, body: Vec<u8> },
     Crashed { reason: String },
 }
 
