@@ -17,6 +17,9 @@ pub struct LayoutBox {
     pub width: f32,
     pub height: f32,
     pub text: String,
+    pub bg_color: Option<(u8, u8, u8)>,
+    pub text_color: Option<(u8, u8, u8)>,
+    pub font_size: f32,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -27,38 +27,23 @@ impl Default for FoxiumApp {
 
 impl FoxiumApp {
     fn load_image(&mut self, ctx: &egui::Context) {
-        if !self.image_path.exists() {
-            self.status = format!("No existe {}", self.image_path.display());
-            return;
-        }
-        match image::open(&self.image_path) {
-            Ok(img) => {
-                let rgba = img.to_rgba8();
-                let size = [rgba.width() as usize, rgba.height() as usize];
-                let pixels = rgba.into_raw();
-                let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &pixels);
-                self.texture = Some(ctx.load_texture(
-                    "iu_render",
-                    color_image,
-                    egui::TextureOptions::LINEAR,
-                ));
-                self.status = "Render cargado.".to_string();
-            }
-            Err(e) => {
-                self.status = format!("Error cargando imagen: {}", e);
-            }
+        if !self.image_path.exists() { return; }
+        if let Ok(img) = image::open(&self.image_path) {
+            let rgba = img.to_rgba8();
+            let size = [rgba.width() as usize, rgba.height() as usize];
+            let pixels = rgba.into_raw();
+            let color_image = egui::ColorImage::from_rgba_unmultiplied(size, &pixels);
+            self.texture = Some(ctx.load_texture("iu_render", color_image, egui::TextureOptions::LINEAR));
+            self.status = "Render cargado.".to_string();
         }
     }
 
     fn navigate(&mut self) {
         self.loading = true;
         self.status = format!("Cargando {} ...", self.url);
-        
         let url = self.url.clone();
         let (tx, rx) = channel();
         self.rx = Some(rx);
-
-        // Ejecutamos el motor en un hilo separado para no congelar la UI
         thread::spawn(move || {
             browser::start(Some(url));
             let _ = tx.send(());
@@ -67,12 +52,11 @@ impl FoxiumApp {
 
     fn check_thread(&mut self, ctx: &egui::Context) {
         if let Some(rx) = &self.rx {
-            if let Ok(_) = rx.try_recv() {
+            if rx.try_recv().is_ok() {
                 self.load_image(ctx);
                 self.loading = false;
                 self.rx = None;
             } else {
-                // Mantener la UI viva mientras carga
                 ctx.request_repaint();
             }
         }
@@ -83,36 +67,49 @@ impl eframe::App for FoxiumApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.check_thread(ctx);
 
-        egui::TopBottomPanel::top("barra").show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.label("Foxium");
+        // Ajustar el estilo visual para que no haya fondos oscuros ni márgenes
+        let mut visuals = egui::Visuals::light();
+        visuals.window_fill = egui::Color32::WHITE;
+        visuals.panel_fill = egui::Color32::from_rgb(240, 240, 240);
+        ctx.set_visuals(visuals);
+
+        // Barra superior compacta
+        egui::TopBottomPanel::top("barra").exact_height(36.0).show(ctx, |ui| {
+            ui.horizontal_centered(|ui| {
+                ui.add_space(8.0);
+                ui.label(egui::RichText::new("Foxium").strong());
                 ui.separator();
-                ui.label("URL:");
-                
-                // Forzamos un ancho máximo para que el botón no se salga
                 ui.add_sized(
-                    [ui.available_width() - 80.0, 24.0],
+                    [ui.available_width() - 60.0, 24.0],
                     egui::TextEdit::singleline(&mut self.url).hint_text("https://..."),
                 );
-                
-                // Botón "Ir" fijo
                 if ui.add_enabled(!self.loading, egui::Button::new("Ir")).clicked() {
                     self.navigate();
                 }
             });
         });
 
-        egui::TopBottomPanel::bottom("estado").show(ctx, |ui| {
-            ui.label(&self.status);
+        // Barra de estado minimalista
+        egui::TopBottomPanel::bottom("estado").exact_height(24.0).show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.add_space(8.0);
+                ui.label(egui::RichText::new(&self.status).size(12.0).weak());
+            });
         });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        // Área central: el render del navegador ocupa todo el espacio
+        egui::CentralPanel::default().frame(egui::Frame::none().fill(egui::Color32::WHITE)).show(ctx, |ui| {
             egui::ScrollArea::both().show(ui, |ui| {
                 if let Some(texture) = &self.texture {
                     let size = texture.size_vec2();
-                    ui.image((texture.id(), size));
+                    // Escalar la imagen para que llene el ancho disponible
+                    let scale = (ui.available_width() / size.x).min(1.0);
+                    let new_size = size * scale;
+                    ui.image((texture.id(), new_size));
                 } else {
-                    ui.label("Sin render. Escribe una URL y pulsa 'Ir'.");
+                    ui.centered_and_justified(|ui| {
+                        ui.label("Escribe una URL y pulsa 'Ir'.");
+                    });
                 }
             });
         });
